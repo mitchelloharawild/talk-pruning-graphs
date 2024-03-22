@@ -1,13 +1,13 @@
 
 <!-- README.md is generated from README.qmd. Please edit that file -->
 
-# ISF2023: Reconciliation of structured time series forecasts with graphs
+# ISF2024: Feature based graph pruning for improved forecast reconciliation
 
 <!-- badges: start -->
 <!-- badges: end -->
 
 Slides and notes for a talk at the 44th International Symposium on
-Forecasting (30th June - 3rd July 2023) in Dijon, France.
+Forecasting (30th June - 3rd July 2024) in Dijon, France.
 
 <!-- A recording of this presentation is available on YouTube here: <https://www.youtube.com/watch?v=FBM-nEbeHTw> -->
 <!-- [![](preview.jpg)](https://www.youtube.com/watch?v=FBM-nEbeHTw) -->
