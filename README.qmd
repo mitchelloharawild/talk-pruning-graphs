@@ -28,6 +28,34 @@ To overcome these problems I propose using time series features to identify nois
 * Feature-based pruning of coherency constraints for improved computational complexity and forecasting accuracy
 * Application and evaluation on real example
 
+Revised structure:
+
+> Background and problem
+
+* What is forecast reconciliation (already covered by earlier talks)
+* Introduction to the fpp3 pageviews data
+* The problem with forecast reconciliation
+* Accuracy table of incoherent vs coherent forecasts
+* Augment accuracy table by various depths
+
+> Accuracy and pruning (can forecast many, but should?)
+
+* Explore why this happens (model misspecification?)
+* Visually traverse the graph of fpp3 pageviews pointing out interesting patterns (weekly, annual seasonality - exam time in Australia)
+* At sparse time series, introduce the solution - discard the subgraph
+
+> Opportunity / possibility (can't forecast many, but shouldn't!)
+
+* Using more dimensions of disaggregation (the 'clickbait')
+* Accuracy table?
+
+> Future work
+
+* Better measures of 'forecast-ability'
+* Lumping unwanted series together
+* Graph vocab for specifying which time series to keep
+* Finish implementation and software design
+
 ### Format
 
 17 minute talk with 3 minutes for questions.

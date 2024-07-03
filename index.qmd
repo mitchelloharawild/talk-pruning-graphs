@@ -1,0 +1,745 @@
+---
+from: markdown+emoji
+format: 
+  letterbox-revealjs:
+    theme: custom.scss
+    progress: false
+    menu: false
+    width: 1280
+    height: 720
+filters:
+  - custom-callouts
+callout-appearance: simple
+---
+
+```{r}
+#| include: false
+library(tidyverse)
+library(ggplot2)
+library(visNetwork)
+library(tidygraph)
+library(graphvec)
+library(fpp3)
+options(width = 75)
+
+visnetwork_hierarchy <- function(data, ...) {
+  nodes <- as_tibble(mutate(activate(data, "nodes"), id = row_number(), level = node_distance_from(node_is_root())))
+  edges <- as_tibble(activate(data, "edges"))
+  graph <- visNetwork(nodes, edges, ...) |> 
+    visHierarchicalLayout(direction = "UD", shakeTowards = "leaves") |> 
+    visOptions(
+      highlightNearest = list(enabled = TRUE, degree = list(from = 50000, to = 0), hover = FALSE, algorithm = "hierarchical"), 
+      collapse = list(enabled = TRUE, fit = FALSE, resetHighlight = TRUE, keepCoord = TRUE,
+                      clusterOptions = list(fixed = TRUE, physics = TRUE))
+    ) |> 
+    visEdges(scaling = list(label = list(enabled = FALSE)), arrows = "to") |> 
+    visNodes(font = list(size = 16))
+  
+  graph$x$tree <- list(updateShape = TRUE, shapeVar = "dot", shapeY = "square")
+  graph
+}
+visnetwork_graph <- function(data, layout = "layout_nicely", ...) {
+  nodes <- as_tibble(mutate(activate(data, "nodes"), id = row_number()))
+  edges <- as_tibble(activate(data, "edges"))
+  graph <- visNetwork(nodes, edges, ...) |> 
+    visIgraphLayout(layout = layout, randomSeed = 123091238) |> 
+    visOptions(
+      highlightNearest = list(enabled = TRUE, degree = list(from = 50000, to = 0), hover = FALSE)
+    ) |> 
+    visEdges(width = 3, scaling = list(label = list(enabled = FALSE)), arrows = "to") |> 
+    visNodes(size = 20)
+  
+  graph$x$tree <- list(updateShape = TRUE, shapeVar = "dot", shapeY = "square")
+  graph
+}
+```
+
+```{r data}
+#| cache: true
+fpp3_complete_ts <- readr::read_csv("fpp3_complete_raw.csv") |>
+  # Fill all structurally valid interactions to complete the bottom level series
+  complete(date, deviceCategory, nesting(continent, subContinent, country), fill = list(screenPageViews = 0, activeUsers = 0)) |>
+  group_by(date, deviceCategory, continent, subContinent, country) |> 
+  summarise(
+    screenPageViews = sum(screenPageViews),
+    activeUsers = sum(activeUsers),
+    .groups = "drop"
+  ) |> 
+  as_tsibble(index = date, key = c(deviceCategory, continent, subContinent, country)) |>
+  fill_gaps(screenPageViews = 0, activeUsers = 0, .full = TRUE)
+fpp3_complete_agg_ts <- fpp3_complete_ts |>
+  aggregate_key(
+    deviceCategory*(continent/subContinent/country),
+    screenPageViews = sum(screenPageViews),
+    activeUsers = sum(activeUsers)
+  )
+rm(fpp3_complete_ts)
+```
+
+
+## {}
+
+::: columns
+::: {.column width="37.5%"}
+:::
+::: {.column width="60%"}
+
+::: {.sticker-float}
+![](media/isf2024.png)
+:::
+
+::: {.title data-id="title"}
+Feature based graph pruning for improved forecast reconciliation
+:::
+
+::: {.dateplace}
+3rd July 2024 @ ISF 2024
+:::
+
+Mitchell O'Hara-Wild, Monash University
+
+::: {.smaller}
+Supervised by Rob Hyndman and George Athanasopoulos
+:::
+
+::: {.callout-link}
+
+## Useful links
+
+![](resources/forum.svg){.icon} [social.mitchelloharawild.com](https://social.mitchelloharawild.com/)
+
+![](resources/projector-screen-outline.svg){.icon} [slides.mitchelloharawild.com/pruning-graphs](https://slides.mitchelloharawild.com/pruning-graphs)
+
+![](resources/github.svg){.icon} [mitchelloharawild/talk-pruning-graphs](https://github.com/mitchelloharawild/talk-pruning-graphs)
+
+:::
+
+:::
+:::
+
+![](backgrounds/megan-o-hanlon-vwvnZ-jSo98-unsplash.jpg){.image-left}
+
+
+## {}
+
+::: columns
+::: {.column width="60%"}
+
+### Forecasting textbook pageviews
+
+::: {.callout-note}
+## Data overview
+
+* Google Analytics data since 1 January 2020
+* Daily page views (and users)
+* Disaggregated by *many* dimensions
+
+  (e.g. location, device, returning visit, web page, ...)
+
+:::
+
+::: {.fragment .fade-in}
+::: {.callout-warning}
+## Illustrative example
+
+I'll gloss over *many* details specific to forecasting this data (I promise it's not interesting or important)!
+
+<!-- Many time series are comprised of events that are aggregated over most dimensions to produce a small number of interesting time series. Some common examples include retail sales, flights, bike share hire, taxi trips. -->
+
+This data will illustrate how coherent pruning is useful for forecast reconciliation - far more interesting!
+
+
+:::
+:::
+
+
+:::
+:::
+
+![](backgrounds/fpp3_front_cover.jpg){.image-right}
+
+
+## {}
+
+### Reconciliation recap
+
+Reconciliation adjusts related forecasts so that they add up correctly.
+
+Related time series are described in three ways:
+
+<!-- ::: {.sticker-float} -->
+<!-- ![](media/isf2023.png) -->
+<!-- ::: -->
+
+::: columns
+
+::: {.column width="33%"}
+::: {.callout-note icon=false}
+## 📚 Hierarchical (2011)
+
+One path from top to bottom.
+
+```{dot}
+//| fig-height: 3
+//| fig-width: 4
+digraph G {
+
+  rankdir = TD;
+  splines = line;
+  subgraph cluster_1 {
+    style = dashed;
+    color = grey60;
+    AX;
+    AY;
+    BX;
+    BY;
+    label = Bottom;
+  }
+
+  subgraph cluster_0 {
+    style = dashed;
+    color = grey60;
+    Total -> A;
+    Total -> B;
+    A -> AX;
+    A -> AY;
+    B -> BX;
+    B -> BY;
+    label = Upper;
+  }
+}
+```
+:::
+:::
+
+::: {.column width="33%"}
+::: {.callout-note icon=false}
+## 📚 Grouped (2016)
+
+Many paths from top to bottom.
+
+```{dot}
+//| fig-height: 3
+//| fig-width: 4
+digraph G {
+  rankdir = TD;
+  splines = line;
+  
+  subgraph cluster_0 {
+    style = dashed;
+    color = grey60;
+    BY;
+    BX;
+    AY;
+    AX;
+    label = Bottom;
+  }
+  subgraph cluster_1 {
+    style = dashed;
+    color = grey60;
+    Total;
+    label = Top;
+  }
+  subgraph cluster_2 {
+    style = dashed;
+    color = grey60;
+    A;
+    B;
+    label = "Path AB";
+  }
+  subgraph cluster_3 {
+    style = dashed;
+    color = grey60;
+    X;
+    Y;
+    label = "Path XY";
+  }
+  
+  Total -> X [style=dashed];
+  Total -> Y [style=dashed];
+  X -> AX [style=dashed];
+  X -> BX [style=dashed];
+  Y -> AY [style=dashed];
+  Y -> BY [style=dashed];
+  Total -> A;
+  Total -> B;
+  A -> AX;
+  A -> AY;
+  B -> BX;
+  B -> BY;
+}
+```
+
+:::
+:::
+::: {.column width="33%"}
+::: {.callout-tip icon=false}
+## 💡 Graph (2023)
+
+Many paths from (many) top to (many) bottom series.
+
+```{dot}
+//| fig-height: 3
+//| fig-width: 4
+digraph G {
+
+  rankdir = TD;
+  splines = line;
+  subgraph cluster_1 {
+    style = dashed;
+    color = grey60;
+    X2;
+    X1;
+    Y;
+    label = "Unconstrained XY";
+  }
+  subgraph cluster_2 {
+    style = dashed;
+    color = grey60;
+    B2;
+    B1;
+    A3;
+    A2;
+    A1;
+    label = "Unconstrained AB";
+  }
+
+  subgraph cluster_0 {
+    style = dashed;
+    color = grey60;
+    Total;
+    X;
+    A;
+    B;
+    
+    Total -> A;
+    Total -> B;
+    A -> A1;
+    A -> A2;
+    A -> A3;
+    B -> B1;
+    B -> B2;
+    Total -> X [style=dashed];
+    Total -> Y [style=dashed];
+    X -> X1 [style=dashed];
+    X -> X2 [style=dashed];
+    label = Constrained;
+  }
+  
+}
+```
+:::
+:::
+
+:::
+
+
+## {}
+
+### Reconciliation recap
+
+::: {.callout icon=false}
+## ❤️ Forecasters love reconciliation
+
+* Widely understood to improve forecast accuracy
+* All forecasts are wrong, but coherent forecasts are less wrong!
+:::
+
+::: {.callout icon=false}
+## 💔 At times its a love hate relationship
+
+* Disaggregation can produce a lot of time series
+* Too many series is expensive to forecast
+:::
+
+## {}
+
+::: {.hierarchy-grid}
+
+::: {.hierarchy-symbolic}
+[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+:::
+
+::: {.hierarchy-plot}
+```{r fpp-total}
+#| fig-height: 7
+#| fig-width: 9
+plot_data <- fpp3_complete_agg_ts |>
+  filter(
+    if_all(c(deviceCategory, continent, subContinent, country), is_aggregated)
+  ) |>
+  summarise(screenPageViews = sum(screenPageViews), activeUsers = sum(activeUsers), .groups = "drop")
+
+plot_data |>
+  ggplot(aes(x = date, y = activeUsers)) +
+  geom_line() +
+  facet_grid(vars("Total"), scales = "free_y") +
+  guides(colour = "none") +
+  theme_minimal()
+```
+:::
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total"),
+    color = c("grey70")
+  ),
+  edges = tibble(from = numeric(), to = numeric())
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+```
+:::
+:::
+
+## {}
+
+::: {.hierarchy-grid}
+
+::: {.hierarchy-symbolic}
+deviceCategory\*([continent]{style="color: #084887;"}/subContinent/country)
+:::
+
+::: {.hierarchy-plot}
+```{r}
+#| fig-height: 7
+#| fig-width: 9
+plot_data <- fpp3_complete_agg_ts |>
+  filter(
+    !is_aggregated(continent),
+    if_all(c(deviceCategory, subContinent, country), is_aggregated)
+  ) |>
+  group_by(continent) |>
+  summarise(screenPageViews = sum(screenPageViews), activeUsers = sum(activeUsers), .groups = "drop")
+
+plot_data |>
+  ggplot(aes(x = date, y = activeUsers)) +
+  geom_line() +
+  facet_grid(vars(continent), scales = "free_y") +
+  guides(colour = "none") +
+  theme_minimal()
+
+nodes_continent <- as.character(unique(plot_data$continent))
+```
+:::
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total", nodes_continent),
+    color = c("grey70", rep("#084887", length(nodes_continent)))
+  ),
+  edges = tibble(
+    from = c(rep(1, length(nodes_continent))),
+    to = c(2:7)
+  )
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+```
+:::
+:::
+
+## {}
+
+::: {.hierarchy-grid}
+
+::: {.hierarchy-symbolic}
+deviceCategory\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/country)
+:::
+
+::: {.hierarchy-plot}
+```{r}
+#| fig-height: 7
+#| fig-width: 9
+plot_data <- fpp3_complete_agg_ts |>
+  filter(
+    continent == "Europe",
+    !is_aggregated(subContinent),
+    if_all(c(deviceCategory, country), is_aggregated)
+  ) |>
+  group_by(continent, subContinent) |>
+  summarise(screenPageViews = sum(screenPageViews), activeUsers = sum(activeUsers), .groups = "drop")
+
+plot_data |>
+  ggplot(aes(x = date, y = activeUsers)) +
+  geom_line() +
+  facet_grid(vars(continent, subContinent), scales = "free_y") +
+  guides(colour = "none") +
+  theme_minimal()
+
+nodes_subContinent <- as.character(unique(plot_data$subContinent))
+```
+:::
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total", nodes_continent, nodes_subContinent),
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)))
+  ),
+  edges = tibble(
+    from = c(rep(1, length(nodes_continent)), rep(6, length(nodes_subContinent))),
+    to = c(2:7, 8:11)
+  )
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+```
+:::
+:::
+
+## {}
+
+::: {.hierarchy-grid}
+
+::: {.hierarchy-symbolic}
+[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+:::
+
+::: {.hierarchy-plot}
+```{r}
+#| fig-height: 7
+#| fig-width: 9
+plot_data <- fpp3_complete_agg_ts |>
+  filter(
+    subContinent == "Western Europe",
+    !is_aggregated(country),
+    if_all(c(deviceCategory), is_aggregated)
+  ) |>
+  group_by(continent, subContinent, country) |>
+  summarise(screenPageViews = sum(screenPageViews), activeUsers = sum(activeUsers), .groups = "drop")
+
+plot_data |>
+  ggplot(aes(x = date, y = activeUsers)) +
+  geom_line() +
+  facet_grid(vars(continent, subContinent, country), scales = "free_y") +
+  guides(colour = "none") +
+  theme_minimal()
+nodes_country <- as.character(unique(plot_data$country))
+```
+:::
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total", nodes_continent, nodes_subContinent, nodes_country),
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#18c6f2", length(nodes_country)))
+  ),
+  edges = tibble(
+    from = c(rep(1, length(nodes_continent)), rep(6, length(nodes_subContinent)), rep(9, length(nodes_country))),
+    to = c(2:7, 8:11, 12:20)
+  )
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+```
+:::
+:::
+
+## {}
+
+::: {.hierarchy-grid}
+
+::: {.hierarchy-symbolic}
+[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+:::
+
+::: {.hierarchy-plot}
+```{r}
+plot_data <- fpp3_complete_agg_ts |>
+  filter(
+    country == "France",
+    !is_aggregated(deviceCategory)
+  ) |>
+  group_by(continent, subContinent, country, deviceCategory) |>
+  summarise(screenPageViews = sum(screenPageViews), activeUsers = sum(activeUsers), .groups = "drop")
+
+plot_data |>
+  ggplot(aes(x = date, y = activeUsers)) +
+  geom_line() +
+  facet_grid(vars(continent, subContinent, country, deviceCategory), scales = "free_y") +
+  guides(colour = "none") +
+  theme_minimal()
+nodes_device <- as.character(unique(plot_data$deviceCategory))
+```
+:::
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total", nodes_continent, nodes_subContinent, nodes_country, nodes_device),
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#18c6f2", length(nodes_country)), rep("#B388EB", length(nodes_device)))
+  ),
+  edges = tibble(
+    from = c(rep(1, length(nodes_continent)), rep(6, length(nodes_subContinent)), rep(9, length(nodes_country)), rep(15, length(nodes_device))),
+    to = c(2:7, 8:11, 12:20, 21:24)
+  )
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+
+```
+:::
+
+:::
+
+## {}
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total", "A", "B"),
+    color = c("grey70", "#F7AEF8", "#F7AEF8")
+  ),
+  edges = tibble(from = c(1, 1), to = c(2, 3))
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+```
+:::
+
+## {}
+
+::: columns
+::: {.column width="60%"}
+
+### Final comments
+
+::: {.callout-tip}
+
+## Key ideas
+
+1. Evaluate reconciliation on **relevant forecasts**
+1. Be wary of **model misspecification** in large hierarchies
+2. **Less can be more** for forecast reconciliation
+3. **Prune uninformative series**, keep useful dimensions
+:::
+
+::: {.fragment .fade-in}
+
+::: {.callout-paper}
+
+## Future work
+
+* Refine metrics of 'forecastability'
+* Lump uninformative series together
+* Expand pruning rules with graph concepts (e.g. depth)
+* Finish software design and implementation
+
+:::
+:::
+
+:::
+:::
+
+![](backgrounds/meric-dagli-7NBO76G5JsE-unsplash.jpg){.image-right}
+
+
+## Thanks for your time!
+
+::: columns
+::: {.column width="60%"}
+
+::: {.callout-link}
+
+## Useful links
+
+![](resources/forum.svg){.icon} [social.mitchelloharawild.com](https://social.mitchelloharawild.com/)
+
+![](resources/projector-screen-outline.svg){.icon} [slides.mitchelloharawild.com/pruning-graphs](https://slides.mitchelloharawild.com/pruning-graphs)
+
+![](resources/github.svg){.icon} [mitchelloharawild/talk-pruning-graphs](https://github.com/mitchelloharawild/talk-pruning-graphs)
+
+:::
+
+
+::: {.callout-tip}
+
+## This is a student presentation, please rate it!
+
+<!-- session feedback qr - https://whova.com/portal/session_feedback/ibcj_202306/3127551 -->
+
+![](resources/rate-whova.png)
+
+:::
+
+<!-- ::: {.callout-unsplash} -->
+
+<!-- ## Photo credits -->
+
+<!-- * Some are taken by me around Charlottesville -->
+<!-- * Most are from [Unsplash contributors](#unsplash-credits) -->
+
+<!-- ::: -->
+:::
+:::
+
+![](backgrounds/meric-dagli-7NBO76G5JsE-unsplash.jpg){.image-right}
+
+
+<!-- ## {} -->
+
+<!-- ::: columns -->
+<!-- ::: {.column width="40%"} -->
+<!-- ::: -->
+<!-- ::: {.column width="60%"} -->
+<!-- ### Visualising structured time series -->
+<!-- ::: -->
+<!-- ::: -->
+
+<!-- ![](backgrounds/yoksel-zok-aEMEMsBNqeo-unsplash.jpg){.image-left} -->
+
+
+## Unsplash credits
+
+::: {.callout-unsplash}
+
+## Thanks to these Unsplash contributors for their photos
+
+```{r unsplash}
+#| echo: FALSE
+#| cache: TRUE
+library(httr)
+library(purrr)
+unsplash_pattern <- ".*-(.{11})-unsplash\\.jpg$"
+images <- list.files("backgrounds/", pattern = unsplash_pattern)
+ids <- sub(unsplash_pattern, "\\1", images)
+
+get_unsplash_credit <- function(id) {
+  unsplash_url <- "https://api.unsplash.com/" 
+  my_response <- httr::GET(unsplash_url, path = c("photos", id), query = list(client_id=Sys.getenv("UNSPLASH_ACCESS")))
+  xml <- content(my_response)
+  
+  name <- xml$user$name
+  desc <- xml$description%||%"Photo"
+  sprintf(
+    "* %s: [%s%s](%s)",
+    name,
+    strtrim(desc,60-nchar(name)),
+    if(nchar(desc)>(60-nchar(name))) "..." else "",
+    modify_url("https://unsplash.com/", path = file.path("photos", xml$id))
+  )
+}
+htmltools::includeMarkdown(paste0(map_chr(ids, get_unsplash_credit), collapse = "\n"))
+```
+
+:::
