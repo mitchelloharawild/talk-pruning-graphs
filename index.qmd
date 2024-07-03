@@ -1,5 +1,7 @@
 ---
 from: markdown+emoji
+execute: 
+  cache: true
 format: 
   letterbox-revealjs:
     theme: custom.scss
@@ -122,48 +124,9 @@ Supervised by Rob Hyndman and George Athanasopoulos
 
 ## {}
 
-::: columns
-::: {.column width="60%"}
-
-### Forecasting textbook pageviews
-
-::: {.callout-note}
-## Data overview
-
-* Google Analytics data since 1 January 2020
-* Daily page views (and users)
-* Disaggregated by *many* dimensions
-
-  (e.g. location, device, returning visit, web page, ...)
-
-:::
-
-::: {.fragment .fade-in}
-::: {.callout-warning}
-## Illustrative example
-
-I'll gloss over *many* details specific to forecasting this data (I promise it's not interesting or important)!
-
-<!-- Many time series are comprised of events that are aggregated over most dimensions to produce a small number of interesting time series. Some common examples include retail sales, flights, bike share hire, taxi trips. -->
-
-This data will illustrate how coherent pruning is useful for forecast reconciliation - far more interesting!
-
-
-:::
-:::
-
-
-:::
-:::
-
-![](backgrounds/fpp3_front_cover.jpg){.image-right}
-
-
-## {}
-
 ### Reconciliation recap
 
-Reconciliation adjusts related forecasts so that they add up correctly.
+Reconciliation adjusts related forecasts so they add up correctly (coherent).
 
 Related time series are described in three ways:
 
@@ -338,26 +301,82 @@ digraph G {
 
 ### Reconciliation recap
 
+
+::: columns
+::: {.column width="60%"}
+
 ::: {.callout icon=false}
 ## ❤️ Forecasters love reconciliation
 
 * Widely understood to improve forecast accuracy
-* All forecasts are wrong, but coherent forecasts are less wrong!
+* All forecasts are wrong...
+
+  ... but coherent forecasts are less wrong!
 :::
 
 ::: {.callout icon=false}
-## 💔 At times its a love hate relationship
+## 💔 At times its a love-hate relationship
 
 * Disaggregation can produce a lot of time series
 * Too many series is expensive to forecast
+
+[Today, I hope to help you love reconciliation more!]{.fragment .fade-in}
+:::
+:::
 :::
 
+![](backgrounds/yoksel-zok-aEMEMsBNqeo-unsplash.jpg){.image-right}
+
 ## {}
+
+::: columns
+::: {.column width="60%"}
+
+### Forecasting textbook pageviews
+
+::: {.callout-note}
+## Data overview
+
+* Google Analytics data since 1 January 2020
+* Daily page views (and users)
+* Disaggregated by *many* dimensions
+
+  (e.g. location, device, returning visit, web page, ...)
+
+:::
+
+::: {.fragment .fade-in}
+::: {.callout-warning}
+## Illustrative example
+
+I'll gloss over *many* details specific to forecasting this data (I promise it's not interesting or important)!
+
+<!-- Many time series are comprised of events that are aggregated over most dimensions to produce a small number of interesting time series. Some common examples include retail sales, flights, bike share hire, taxi trips. -->
+
+This data will illustrate how coherent pruning is useful for forecast reconciliation - far more interesting!
+
+
+:::
+:::
+
+
+:::
+:::
+
+![](backgrounds/fpp3_front_cover.jpg){.image-right}
+
+
+
+## {}
+
+::: {.sticker-float}
+![](media/fpp3.svg)
+:::
 
 ::: {.hierarchy-grid}
 
 ::: {.hierarchy-symbolic}
-[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+deviceCategory\*(continent/subContinent/country)
 :::
 
 ::: {.hierarchy-plot}
@@ -397,6 +416,10 @@ tidygraph::tbl_graph(
 :::
 
 ## {}
+
+::: {.sticker-float}
+![](media/fpp3.svg)
+:::
 
 ::: {.hierarchy-grid}
 
@@ -448,6 +471,10 @@ tidygraph::tbl_graph(
 :::
 
 ## {}
+
+::: {.sticker-float}
+![](media/fpp3.svg)
+:::
 
 ::: {.hierarchy-grid}
 
@@ -501,10 +528,14 @@ tidygraph::tbl_graph(
 
 ## {}
 
+::: {.sticker-float}
+![](media/fpp3.svg)
+:::
+
 ::: {.hierarchy-grid}
 
 ::: {.hierarchy-symbolic}
-[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+deviceCategory\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
 :::
 
 ::: {.hierarchy-plot}
@@ -552,6 +583,10 @@ tidygraph::tbl_graph(
 
 ## {}
 
+::: {.sticker-float}
+![](media/fpp3.svg)
+:::
+
 ::: {.hierarchy-grid}
 
 ::: {.hierarchy-symbolic}
@@ -560,6 +595,8 @@ tidygraph::tbl_graph(
 
 ::: {.hierarchy-plot}
 ```{r}
+#| fig-height: 7
+#| fig-width: 9
 plot_data <- fpp3_complete_agg_ts |>
   filter(
     country == "France",
@@ -589,6 +626,436 @@ tidygraph::tbl_graph(
     color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#18c6f2", length(nodes_country)), rep("#B388EB", length(nodes_device)))
   ),
   edges = tibble(
+    from = c(rep(1, length(nodes_continent)), rep(6, length(nodes_subContinent)), rep(9, length(nodes_country)), rep(14, length(nodes_device))),
+    to = c(2:7, 8:11, 12:20, 21:24)
+  )
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+
+```
+:::
+
+:::
+
+
+## {}
+
+::: columns
+::: {.column width="60%"}
+
+### 💡 Idea: graph pruning
+
+Many time series aren't interesting or useful.
+
+::: {.fragment .fade-in}
+::: {.callout-tip}
+## Simply don't forecast them!
+
+Removing uninformative series has many benefits:
+
+* ✅ Less computation time
+* ✅ Less model misspecification
+* ✅ Better accuracy?
+
+:::
+:::
+
+::: {.fragment .fade-in}
+::: {.callout-note}
+## From grouped to graph
+
+This is made possible with **graph reconciliation**.
+
+Simply removing series breaks the coherency structure. 
+
+We also must remove the relevant coherency constraints.
+:::
+:::
+
+:::
+:::
+
+![](backgrounds/pexels-shvetsa-5231048.jpg){.image-right}
+
+
+## {}
+
+::: columns
+::: {.column width="60%"}
+
+### 💡 Idea: graph pruning
+
+::: {.callout-important}
+## Maintaining coherency
+
+Even if a series is unwanted, it can't be removed if other useful series are used in the same disaggregation.
+
+There are two fundamental decisions involved in pruning:
+
+1. The **predicate**: the test for 'forecastability'.
+2. The **disaggregation rule**: a function that decides if the set of disaggregates are kept.
+
+To maintain coherency, the decision at each disaggregation is **all or nothing**.
+:::
+
+:::
+:::
+
+![](backgrounds/pexels-shvetsa-5231048.jpg){.image-right}
+
+
+
+## {}
+
+::: columns
+::: {.column width="60%"}
+
+### 💡 Idea: graph pruning
+
+::: {.callout-note}
+## Automated graph pruning with features
+
+Starting from the top to bottom, we evaluate the 'forecastability' of each series with the **predicate**.
+
+This can be done automatically with **features**, such as:
+
+* The average value (*scale*)
+* The number of zeroes (*intermittency*)
+* The strength of seasonality (*structure*)
+
+If the disaggregated series satisfy the **disaggregation rule**, we disaggregate further.
+
+Repeat this through the graph until we reach completely uninteresting data, or the bottom series.
+:::
+
+:::
+:::
+
+![](backgrounds/pexels-shvetsa-5231048.jpg){.image-right}
+
+
+## {}
+
+::: {.sticker-float}
+![](media/fpp3.svg)
+:::
+
+::: {.hierarchy-grid}
+
+::: {.hierarchy-symbolic}
+deviceCategory\*(continent/subContinent/country)
+:::
+
+::: {.hierarchy-plot}
+```{r}
+#| fig-height: 7
+#| fig-width: 9
+plot_data <- fpp3_complete_agg_ts |>
+  filter(
+    if_all(c(deviceCategory, continent, subContinent, country), is_aggregated)
+  ) |>
+  summarise(screenPageViews = sum(screenPageViews), activeUsers = sum(activeUsers), .groups = "drop")
+
+plot_data |>
+  ggplot(aes(x = date, y = activeUsers)) +
+  geom_line() +
+  facet_grid(vars("Total"), scales = "free_y") +
+  guides(colour = "none") +
+  theme_minimal()
+```
+:::
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total"),
+    color = c("grey70"),
+    font.background = "lightgreen"
+  ),
+  edges = tibble(from = numeric(), to = numeric())
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+```
+:::
+:::
+
+## {}
+
+::: {.sticker-float}
+![](media/fpp3.svg)
+:::
+
+::: {.hierarchy-grid}
+
+::: {.hierarchy-symbolic}
+deviceCategory\*([continent]{style="color: #084887;"}/subContinent/country)
+:::
+
+::: {.hierarchy-plot}
+```{r}
+#| fig-height: 7
+#| fig-width: 9
+plot_data <- fpp3_complete_agg_ts |>
+  filter(
+    !is_aggregated(continent),
+    if_all(c(deviceCategory, subContinent, country), is_aggregated)
+  ) |>
+  group_by(continent) |>
+  summarise(screenPageViews = sum(screenPageViews), activeUsers = sum(activeUsers), .groups = "drop")
+
+plot_data |>
+  ggplot(aes(x = date, y = activeUsers)) +
+  geom_line() +
+  facet_grid(vars(continent), scales = "free_y") +
+  guides(colour = "none") +
+  theme_minimal()
+
+nodes_continent <- as.character(unique(plot_data$continent))
+```
+:::
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total", nodes_continent),
+    color = c("grey70", rep("#084887", length(nodes_continent))),
+    font.background = c("lightgreen", "red", rep("lightgreen", 5))
+  ),
+  edges = tibble(
+    from = c(rep(1, length(nodes_continent))),
+    to = c(2:7)
+  )
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+```
+:::
+:::
+
+## {}
+
+::: {.sticker-float}
+![](media/fpp3.svg)
+:::
+
+::: {.hierarchy-grid}
+
+::: {.hierarchy-symbolic}
+deviceCategory\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/country)
+:::
+
+::: {.hierarchy-plot}
+```{r}
+#| fig-height: 7
+#| fig-width: 9
+plot_data <- fpp3_complete_agg_ts |>
+  filter(
+    continent == "Europe",
+    !is_aggregated(subContinent),
+    if_all(c(deviceCategory, country), is_aggregated)
+  ) |>
+  group_by(continent, subContinent) |>
+  summarise(screenPageViews = sum(screenPageViews), activeUsers = sum(activeUsers), .groups = "drop")
+
+plot_data |>
+  ggplot(aes(x = date, y = activeUsers)) +
+  geom_line() +
+  facet_grid(vars(continent, subContinent), scales = "free_y") +
+  guides(colour = "none") +
+  theme_minimal()
+
+nodes_subContinent <- as.character(unique(plot_data$subContinent))
+```
+:::
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total", nodes_continent, nodes_subContinent),
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent))),
+    font.background = c("lightgreen", "red", rep("lightgreen", 9))
+  ),
+  edges = tibble(
+    from = c(rep(1, length(nodes_continent)), rep(6, length(nodes_subContinent))),
+    to = c(2:7, 8:11)
+  )
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+```
+:::
+:::
+
+## {}
+
+::: {.sticker-float}
+![](media/fpp3.svg)
+:::
+
+::: {.hierarchy-grid}
+
+::: {.hierarchy-symbolic}
+deviceCategory\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+:::
+
+::: {.hierarchy-plot}
+```{r}
+#| fig-height: 7
+#| fig-width: 9
+plot_data <- fpp3_complete_agg_ts |>
+  filter(
+    subContinent == "Western Europe",
+    !is_aggregated(country),
+    if_all(c(deviceCategory), is_aggregated)
+  ) |>
+  group_by(continent, subContinent, country) |>
+  summarise(screenPageViews = sum(screenPageViews), activeUsers = sum(activeUsers), .groups = "drop")
+
+plot_data |>
+  ggplot(aes(x = date, y = activeUsers)) +
+  geom_line() +
+  facet_grid(vars(continent, subContinent, country), scales = "free_y") +
+  guides(colour = "none") +
+  theme_minimal()
+nodes_country <- as.character(unique(plot_data$country))
+```
+:::
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total", nodes_continent, nodes_subContinent, nodes_country),
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#18c6f2", length(nodes_country))),
+    font.background = c("lightgreen", "red", rep("lightgreen", 13), rep("red", 3), rep("lightgreen", 2))
+  ),
+  edges = tibble(
+    from = c(rep(1, length(nodes_continent)), rep(6, length(nodes_subContinent)), rep(9, length(nodes_country))),
+    to = c(2:7, 8:11, 12:20)
+  )
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+```
+:::
+:::
+
+## {}
+
+::: {.sticker-float}
+![](media/fpp3.svg)
+:::
+
+::: {.hierarchy-grid}
+
+::: {.hierarchy-symbolic}
+[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+:::
+
+::: {.hierarchy-plot}
+```{r}
+#| fig-height: 7
+#| fig-width: 9
+plot_data <- fpp3_complete_agg_ts |>
+  filter(
+    country == "France",
+    !is_aggregated(deviceCategory)
+  ) |>
+  group_by(continent, subContinent, country, deviceCategory) |>
+  summarise(screenPageViews = sum(screenPageViews), activeUsers = sum(activeUsers), .groups = "drop")
+
+plot_data |>
+  ggplot(aes(x = date, y = activeUsers)) +
+  geom_line() +
+  facet_grid(vars(continent, subContinent, country, deviceCategory), scales = "free_y") +
+  guides(colour = "none") +
+  theme_minimal()
+nodes_device <- as.character(unique(plot_data$deviceCategory))
+```
+:::
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total", nodes_continent, nodes_subContinent, nodes_country, nodes_device),
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#18c6f2", length(nodes_country)), rep("#B388EB", length(nodes_device))),
+    font.background = c("lightgreen", "red", rep("lightgreen", 13), rep("red", 3), rep("lightgreen", 4), "red", "red")
+  ),
+  edges = tibble(
+    from = c(rep(1, length(nodes_continent)), rep(6, length(nodes_subContinent)), rep(9, length(nodes_country)), rep(14, length(nodes_device))),
+    to = c(2:7, 8:11, 12:20, 21:24)
+  )
+) |>
+  visnetwork_hierarchy(width = 480, height = 650)
+
+```
+:::
+
+:::
+
+
+## {}
+
+::: {.sticker-float}
+![](media/fpp3.svg)
+:::
+
+::: {.hierarchy-grid}
+
+::: {.hierarchy-symbolic}
+[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+:::
+
+::: {.hierarchy-plot}
+```{r}
+#| fig-height: 7
+#| fig-width: 9
+plot_data <- fpp3_complete_agg_ts |>
+  filter(
+    country == "Germany",
+    !is_aggregated(deviceCategory)
+  ) |>
+  group_by(continent, subContinent, country, deviceCategory) |>
+  summarise(screenPageViews = sum(screenPageViews), activeUsers = sum(activeUsers), .groups = "drop")
+
+plot_data |>
+  ggplot(aes(x = date, y = activeUsers)) +
+  geom_line() +
+  facet_grid(vars(continent, subContinent, country, deviceCategory), scales = "free_y") +
+  guides(colour = "none") +
+  theme_minimal()
+nodes_device <- as.character(unique(plot_data$deviceCategory))
+```
+:::
+
+::: {.hierarchy-graph}
+```{r}
+#| echo: false
+#| output: hide
+
+tidygraph::tbl_graph(
+  nodes = tibble(
+    label = c("Total", nodes_continent, nodes_subContinent, nodes_country, nodes_device),
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#18c6f2", length(nodes_country)), rep("#B388EB", length(nodes_device))),
+    font.background = c("lightgreen", "red", rep("lightgreen", 13), rep("red", 3), rep("lightgreen", 4), "red", "lightgreen")
+  ),
+  edges = tibble(
     from = c(rep(1, length(nodes_continent)), rep(6, length(nodes_subContinent)), rep(9, length(nodes_country)), rep(15, length(nodes_device))),
     to = c(2:7, 8:11, 12:20, 21:24)
   )
@@ -602,20 +1069,122 @@ tidygraph::tbl_graph(
 
 ## {}
 
-::: {.hierarchy-graph}
-```{r}
-#| echo: false
-#| output: hide
-tidygraph::tbl_graph(
-  nodes = tibble(
-    label = c("Total", "A", "B"),
-    color = c("grey70", "#F7AEF8", "#F7AEF8")
-  ),
-  edges = tibble(from = c(1, 1), to = c(2, 3))
-) |>
-  visnetwork_hierarchy(width = 480, height = 650)
-```
+::: columns
+::: {.column width="60%"}
+
+### Graph pruning practicality
+
+::: {.callout-note}
+
+## The small example
+
+On this small example with structure:
+
+::: {style='font-family: monospace;'}
+deviceCategory\*(continent/subContinent/country)
 :::
+
+There were a total of **1305 time series**.
+:::
+
+
+::: {.callout-tip}
+## A simple pruning with...
+
+* **predicate**: average >10, <50% zeroes
+* **disaggregate rule**: >50% forecastable
+
+Was able to maintain coherent forecasting accuracy with **<50% of the data** (666 observations).
+:::
+
+:::
+:::
+
+![](backgrounds/firosnv-photography-Rr3B0LH7W3k-unsplash.jpg){.image-right}
+
+
+## {}
+
+::: columns
+::: {.column width="60%"}
+
+### Graph pruning practicality
+
+::: {.callout-note}
+
+## The big picture
+
+The actual data has 100s of disaggregating dimensions.
+
+With this slightly larger structure:
+
+::: {style='font-family: monospace;'}
+operatingSystem\*userType\*deviceCategory\*
+
+(pagePathLevel1/pagePathLevel2)\*
+
+(continent/subContinent/country)
+:::
+
+There are a total of... 🥁
+
+:::{.fragment .fade-in}
+::: {.callout-important}
+[**1,699,593,840** time series.]{style='font-size: 50px'}
+:::
+:::
+:::
+
+::: {.fragment .fade-in}
+::: {.callout-tip}
+## 🗑️ A simple pruning later...
+
+**< 10,000** useful time series, minimal loss of information.
+:::
+:::
+
+:::
+:::
+
+![](backgrounds/firosnv-photography-Rr3B0LH7W3k-unsplash.jpg){.image-right}
+
+
+## {}
+
+::: columns
+::: {.column width="60%"}
+
+### Pruned graph reconciliation
+
+Graph pruning of coherent time series **solves big problems** with forecast reconcilation.
+
+::: {.callout-important}
+## Grouped constraints
+
+Since grouped constraints require a **common bottom series**, previously all disaggregates must be forecasted.
+
+To keep the data small...
+
+**useful dimensions had to be dropped** ❌
+:::
+:::
+
+::: {.fragment .fade-in}
+::: {.callout-tip}
+## Graph constraints
+
+With graph constraints, there can be any structure.
+
+To keep the data small...
+
+**useless series can be dropped!** ✅
+:::
+:::
+
+:::
+:::
+
+![](backgrounds/firosnv-photography-Rr3B0LH7W3k-unsplash.jpg){.image-right}
 
 ## {}
 
