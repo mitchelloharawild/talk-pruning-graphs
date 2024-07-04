@@ -138,7 +138,7 @@ Related time series are described in three ways:
 
 ::: {.column width="33%"}
 ::: {.callout-note icon=false}
-## 📚 Hierarchical (2011)
+## 📚 Hierarchical
 
 One path from top to bottom.
 
@@ -177,7 +177,7 @@ digraph G {
 
 ::: {.column width="33%"}
 ::: {.callout-note icon=false}
-## 📚 Grouped (2016)
+## 📚 Grouped
 
 Many paths from top to bottom.
 
@@ -237,7 +237,7 @@ digraph G {
 :::
 ::: {.column width="33%"}
 ::: {.callout-tip icon=false}
-## 💡 Graph (2023)
+## 💡 Graph (ISF2023)
 
 Many paths from (many) top to (many) bottom series.
 
@@ -535,7 +535,7 @@ tidygraph::tbl_graph(
 ::: {.hierarchy-grid}
 
 ::: {.hierarchy-symbolic}
-deviceCategory\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+deviceCategory\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #fbb13c;"})
 :::
 
 ::: {.hierarchy-plot}
@@ -569,7 +569,7 @@ nodes_country <- as.character(unique(plot_data$country))
 tidygraph::tbl_graph(
   nodes = tibble(
     label = c("Total", nodes_continent, nodes_subContinent, nodes_country),
-    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#18c6f2", length(nodes_country)))
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#fbb13c", length(nodes_country)))
   ),
   edges = tibble(
     from = c(rep(1, length(nodes_continent)), rep(6, length(nodes_subContinent)), rep(9, length(nodes_country))),
@@ -590,7 +590,7 @@ tidygraph::tbl_graph(
 ::: {.hierarchy-grid}
 
 ::: {.hierarchy-symbolic}
-[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #fbb13c;"})
 :::
 
 ::: {.hierarchy-plot}
@@ -623,7 +623,7 @@ nodes_device <- as.character(unique(plot_data$deviceCategory))
 tidygraph::tbl_graph(
   nodes = tibble(
     label = c("Total", nodes_continent, nodes_subContinent, nodes_country, nodes_device),
-    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#18c6f2", length(nodes_country)), rep("#B388EB", length(nodes_device)))
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#fbb13c", length(nodes_country)), rep("#B388EB", length(nodes_device)))
   ),
   edges = tibble(
     from = c(rep(1, length(nodes_continent)), rep(6, length(nodes_subContinent)), rep(9, length(nodes_country)), rep(14, length(nodes_device))),
@@ -905,7 +905,7 @@ tidygraph::tbl_graph(
 ::: {.hierarchy-grid}
 
 ::: {.hierarchy-symbolic}
-deviceCategory\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+deviceCategory\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #fbb13c;"})
 :::
 
 ::: {.hierarchy-plot}
@@ -939,7 +939,7 @@ nodes_country <- as.character(unique(plot_data$country))
 tidygraph::tbl_graph(
   nodes = tibble(
     label = c("Total", nodes_continent, nodes_subContinent, nodes_country),
-    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#18c6f2", length(nodes_country))),
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#fbb13c", length(nodes_country))),
     font.background = c("lightgreen", "red", rep("lightgreen", 13), rep("red", 3), rep("lightgreen", 2))
   ),
   edges = tibble(
@@ -961,7 +961,7 @@ tidygraph::tbl_graph(
 ::: {.hierarchy-grid}
 
 ::: {.hierarchy-symbolic}
-[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #fbb13c;"})
 :::
 
 ::: {.hierarchy-plot}
@@ -994,7 +994,7 @@ nodes_device <- as.character(unique(plot_data$deviceCategory))
 tidygraph::tbl_graph(
   nodes = tibble(
     label = c("Total", nodes_continent, nodes_subContinent, nodes_country, nodes_device),
-    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#18c6f2", length(nodes_country)), rep("#B388EB", length(nodes_device))),
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#fbb13c", length(nodes_country)), rep("#B388EB", length(nodes_device))),
     font.background = c("lightgreen", "red", rep("lightgreen", 13), rep("red", 3), rep("lightgreen", 4), "red", "red")
   ),
   edges = tibble(
@@ -1019,7 +1019,7 @@ tidygraph::tbl_graph(
 ::: {.hierarchy-grid}
 
 ::: {.hierarchy-symbolic}
-[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #18c6f2;"})
+[deviceCategory]{style="color: #B388EB;"}\*([continent]{style="color: #084887;"}/[subContinent]{style="color: #8093f1;"}/[country]{style="color: #fbb13c;"})
 :::
 
 ::: {.hierarchy-plot}
@@ -1052,7 +1052,7 @@ nodes_device <- as.character(unique(plot_data$deviceCategory))
 tidygraph::tbl_graph(
   nodes = tibble(
     label = c("Total", nodes_continent, nodes_subContinent, nodes_country, nodes_device),
-    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#18c6f2", length(nodes_country)), rep("#B388EB", length(nodes_device))),
+    color = c("grey70", rep("#084887", length(nodes_continent)), rep("#8093f1", length(nodes_subContinent)), rep("#fbb13c", length(nodes_country)), rep("#B388EB", length(nodes_device))),
     font.background = c("lightgreen", "red", rep("lightgreen", 13), rep("red", 3), rep("lightgreen", 4), "red", "lightgreen")
   ),
   edges = tibble(
@@ -1182,7 +1182,6 @@ To keep the data small...
 :::
 
 :::
-:::
 
 ![](backgrounds/firosnv-photography-Rr3B0LH7W3k-unsplash.jpg){.image-right}
 
@@ -1277,38 +1276,3 @@ To keep the data small...
 
 <!-- ![](backgrounds/yoksel-zok-aEMEMsBNqeo-unsplash.jpg){.image-left} -->
 
-
-## Unsplash credits
-
-::: {.callout-unsplash}
-
-## Thanks to these Unsplash contributors for their photos
-
-```{r unsplash}
-#| echo: FALSE
-#| cache: TRUE
-library(httr)
-library(purrr)
-unsplash_pattern <- ".*-(.{11})-unsplash\\.jpg$"
-images <- list.files("backgrounds/", pattern = unsplash_pattern)
-ids <- sub(unsplash_pattern, "\\1", images)
-
-get_unsplash_credit <- function(id) {
-  unsplash_url <- "https://api.unsplash.com/" 
-  my_response <- httr::GET(unsplash_url, path = c("photos", id), query = list(client_id=Sys.getenv("UNSPLASH_ACCESS")))
-  xml <- content(my_response)
-  
-  name <- xml$user$name
-  desc <- xml$description%||%"Photo"
-  sprintf(
-    "* %s: [%s%s](%s)",
-    name,
-    strtrim(desc,60-nchar(name)),
-    if(nchar(desc)>(60-nchar(name))) "..." else "",
-    modify_url("https://unsplash.com/", path = file.path("photos", xml$id))
-  )
-}
-htmltools::includeMarkdown(paste0(map_chr(ids, get_unsplash_credit), collapse = "\n"))
-```
-
-:::
